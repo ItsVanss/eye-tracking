@@ -1,47 +1,71 @@
-char data;
+#include <WiFi.h>
 
-int ledKanan = 10;
-int ledTengah = 11;
-int ledKiri = 12;
+const char* ssid = "POCO F6";
+const char* password = "vansvans";
 
-char lastData = 'X'; // untuk menghindari update berulang
+WiFiServer server(1234);
+
+int ledKanan = 2;
+int ledTengah = 4;
+int ledKiri = 5;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
+  delay(1000);
+
+  Serial.println("START");
 
   pinMode(ledKanan, OUTPUT);
   pinMode(ledTengah, OUTPUT);
   pinMode(ledKiri, OUTPUT);
 
-  // Semua mati (active LOW)
-  digitalWrite(ledKanan, HIGH);
-  digitalWrite(ledTengah, HIGH);
-  digitalWrite(ledKiri, HIGH);
+  WiFi.begin(ssid, password);
+
+  Serial.print("Connecting");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nCONNECTED!");
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
+
+  server.begin();  // 🔥 PENTING BANGET
+  Serial.println("SERVER STARTED");
 }
 
 void loop() {
-  if (Serial.available() > 0) {
-    data = Serial.read();
+  WiFiClient client = server.available();
 
-    // Hanya proses kalau data berubah
-    if (data != lastData) {
+  if (client) {
+    Serial.println("Client Connected!");
 
-      // Matikan semua dulu
-      digitalWrite(ledKanan, HIGH);
-      digitalWrite(ledTengah, HIGH);
-      digitalWrite(ledKiri, HIGH);
+    while (client.connected()) {
+      if (client.available()) {
+        char data = client.read();
 
-      if (data == 'R') {
+        Serial.print("Data: ");
+        Serial.println(data);
+
+        // matikan semua
         digitalWrite(ledKanan, LOW);
-      }
-      else if (data == 'C') {
         digitalWrite(ledTengah, LOW);
-      }
-      else if (data == 'L') {
         digitalWrite(ledKiri, LOW);
-      }
 
-      lastData = data;
+        if (data == 'R') {
+          digitalWrite(ledKanan, HIGH);
+        }
+        else if (data == 'C') {
+          digitalWrite(ledTengah, HIGH);
+        }
+        else if (data == 'L') {
+          digitalWrite(ledKiri, HIGH);
+        }
+      }
     }
+
+    client.stop();
+    Serial.println("Client Disconnected");
   }
 }
